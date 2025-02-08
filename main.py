@@ -20,6 +20,7 @@ if __name__ == '__main__':
         client = get_client_ble(target_address, ntf_uuid)
     except Exception as e:
         print(str(e))
+        print('connect failed!')
         exit(0)
     dev_audio = pyaudio.PyAudio()
     stream = dev_audio.open(format=FORMAT, channels=CHANNELS, rate=RATE, output=True)

@@ -1,4 +1,7 @@
 import asyncio
+import binascii
+
+import bleak
 from bleak import BleakClient, BleakScanner, BleakError
 
 queue: asyncio.Queue = asyncio.Queue()
@@ -8,6 +11,45 @@ def asyncio_run(coro):
     # asyncio.run doesn't seem to exist on Python 3.6.9 / Bleak 0.14.2
     loop = asyncio.get_event_loop()
     return loop.run_until_complete(coro)
+
+
+def on_scan_callback(device, advertisement_data):
+    print("\r\n")
+    if device.name:
+        print(f"{device.address}  {device.name}  ,RSSI: {advertisement_data.rssi}")
+    else:
+        print(f"{device.address} ,RSSI: {advertisement_data.rssi}")
+
+    manufacturer_data = advertisement_data.manufacturer_data
+    for key, value in manufacturer_data.items():
+        company_id = key
+        adv_len = 3 + len(value)
+        hex_data = '{:02x}ff{:04x}{}'.format(adv_len, company_id, value.hex())
+        print(hex_data)
+
+    service_data = advertisement_data.service_data
+    for key, value in service_data.items():
+        hex_data: str = binascii.hexlify(value).decode("utf-8")
+        print(hex_data)
+
+
+async def ble_advertisement_scan_start(scan_callback):
+    if scan_callback:
+        scanner = BleakScanner(detection_callback=scan_callback)
+    else:
+        scanner = BleakScanner(detection_callback=on_scan_callback)
+    await scanner.start()
+    return scanner
+
+
+async def ble_advertisement_scan_stop(scanner: BleakScanner):
+    await scanner.stop()
+
+
+async def scan_ble_dev():
+    devices = await BleakScanner.discover()
+    for d in devices:
+        print(f"{d.address}  {d.name}")
 
 
 async def list_services(client):
@@ -67,6 +109,18 @@ async def async_get_client_ble(ble_address: str, ntf_uuid: str) -> BleakClient:
         await client.start_notify(ntf_uuid, callback)
 
     return client
+
+
+def bel_discover():
+    return asyncio_run(scan_ble_dev())
+
+
+def ble_adv_scan_start(scan_callback):
+    return asyncio_run(ble_advertisement_scan_start(scan_callback))
+
+
+def ble_adv_scan_stop(scanner):
+    return asyncio_run(ble_advertisement_scan_stop(scanner))
 
 
 def get_client_ble(address, uuid=None):
